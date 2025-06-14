@@ -1,5 +1,5 @@
 from passlib.context import CryptContext
-from fastapi import HTTPException, status
+
 
 # Создаем контекст с алгоритмом bcrypt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

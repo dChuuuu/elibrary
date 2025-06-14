@@ -2,8 +2,11 @@ from pydantic import BaseModel
 
 
 class LibrarianSchema(BaseModel):
-    id: int
+
     email: str
+    access_token: str = None
 
     class Config:
         from_attributes = True
+
+

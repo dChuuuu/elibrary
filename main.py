@@ -8,7 +8,7 @@ import json
 from models.librarian import Librarian as LibrarianModel
 from models.manager import LibrarianManager
 from database import SessionLocal, engine
-from schemas.librarian import LibrarianSchema
+from schemas.librarian import LibrarianSchema, LibrarianJWTSchema
 from tools.access_token import get_token
 from tools.authentication import authenticate
 
@@ -30,7 +30,7 @@ async def create_librarian(librarian: Librarian):
 
     return librarian
 
-@app.post('/librarians/login', status_code=status.HTTP_200_OK, response_model=LibrarianSchema)
+@app.post('/librarians/login', status_code=status.HTTP_200_OK, response_model=LibrarianJWTSchema)
 async def login_librarian(librarian: Librarian):
     librarian = librarian.model_dump()
     email = librarian['email']

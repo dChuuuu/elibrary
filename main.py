@@ -1,4 +1,6 @@
-from fastapi import FastAPI, status, Response
+from fastapi import FastAPI, status, Response, Depends
+from fastapi.security import OAuth2PasswordBearer
+
 from serializers.authentication.serializer import Librarian
 from packages.validators.validator import EmailValidator, PasswordValidator
 from packages.password_hashing.hasher import hash_password
@@ -8,6 +10,10 @@ from models.manager import LibrarianManager
 from database import SessionLocal, engine
 from schemas.librarian import LibrarianSchema
 from tools.access_token import get_token
+from tools.authentication import authenticate
+
+
+
 app = FastAPI()
 
 
@@ -35,4 +41,9 @@ async def login_librarian(librarian: Librarian):
     access_token = get_token(librarian_dict)
     librarian_dict['access_token'] = access_token
     response = librarian_dict
+
     return response
+
+@app.post('/secured')
+async def secured_endpoint(token: str = Depends(authenticate)):
+    return {'message': 'successful'}

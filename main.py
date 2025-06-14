@@ -11,7 +11,7 @@ from schemas.librarian import LibrarianSchema
 app = FastAPI()
 
 
-@app.post('/librarians/create', status_code=status.HTTP_201_CREATED, response_model=LibrarianSchema)
+@app.post('/librarians/register', status_code=status.HTTP_201_CREATED, response_model=LibrarianSchema)
 async def create_librarian(librarian: Librarian):
     librarian = librarian.model_dump()
     email = librarian['email']

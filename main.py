@@ -1,6 +1,5 @@
-from fastapi import FastAPI, status, Response, Depends
-from fastapi.security import OAuth2PasswordBearer
-
+from fastapi import FastAPI, status, Depends
+from sqlalchemy import select
 from schemas.book import BookSchema
 from schemas.borrowedbooks import BorrowedBooksSchema
 from schemas.reader import ReaderSchema
@@ -10,14 +9,12 @@ from serializers.readers.serializer import Reader, ReaderUpdate
 from packages.validators.validator import EmailValidator, PasswordValidator
 from packages.password_hashing.hasher import hash_password
 from serializers.books_logic.serializer import ReaderBookId
-import json
-from models.models import Librarian as LibrarianModel
+from models.models import Book as BookModel, BorrowedBooks as BorrowedBooksModel
 from models.manager import LibrarianManager, BookManager, ReaderManager, BorrowedBooksManager
-from database import AsyncSession, engine
+from database import AsyncSession
 from schemas.librarian import LibrarianSchema, LibrarianJWTSchema
 from tools.access_token import get_token
 from tools.authentication import authenticate
-
 
 
 app = FastAPI()
@@ -136,6 +133,35 @@ async def return_book(borrowed_id: int):
     db = AsyncSession()
     borrowed_book = await BorrowedBooksManager().return_book(borrowed_id, db)
     return borrowed_book
+
+@app.get('/books', status_code=status.HTTP_200_OK)
+async def get_books():
+    async with AsyncSession() as session:
+        stmt = select(BookModel)
+        result = await session.execute(stmt)
+        books = result.scalars().all()
+        return books
+
+@app.get('/books/get_borrowed_book/{reader_id}', status_code=status.HTTP_200_OK)
+async def get_borrowed_book(reader_id: int, token = Depends(authenticate)):
+    async with AsyncSession() as session:
+        stmt = select(BorrowedBooksModel).where(BorrowedBooksModel.reader_id == reader_id)
+        result = await session.execute(stmt)
+        borrowed_books = result.scalars().all()
+        borrowed_books_list = []
+        for borrowed_book in borrowed_books:
+            if borrowed_book.return_date is not None:
+                pass
+            else:
+                stmt = select(BookModel).where(BookModel.id == int(borrowed_book.book_id))
+                result = await session.execute(stmt)
+                book = result.scalar_one_or_none()
+                borrowed_books_list.append(book)
+
+        return borrowed_books_list
+
+
+
 
 
 

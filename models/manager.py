@@ -190,7 +190,7 @@ class BorrowedBooksManager:
     async def create(self, reader: ReaderSerializer, book: BookSerializer, database: AsyncSession) -> BorrowedBooks:
         async with database as session:
             book_id = book.id
-            print(book_id)
+
             reader_id = reader.id
             stmt = select(BorrowedBooks).where(BorrowedBooks.reader_id == int(reader_id) and BorrowedBooks.return_date is not None)
 
@@ -220,6 +220,9 @@ class BorrowedBooksManager:
             borrowed_book = result.scalar_one_or_none()
 
             if borrowed_book:
+                if borrowed_book.return_date:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                        detail='book already returned')
                 stmt = select(Book).where(Book.id == int(borrowed_book.book_id))
                 result = await session.execute(stmt)
                 book = result.scalar_one_or_none()
@@ -235,3 +238,4 @@ class BorrowedBooksManager:
 
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail='borrowed book not found')
+

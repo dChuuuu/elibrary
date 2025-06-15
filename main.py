@@ -75,5 +75,5 @@ async def update_book(id: int, updated_book: BookUpdate, token: str = Depends(au
 @app.delete('/books/{id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_book(id: int, token: str = Depends(authenticate)):
     db = AsyncSession()
-    book = await BookManager().delete(id, db)
+    await BookManager().delete(id, db)
 

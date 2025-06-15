@@ -18,7 +18,7 @@ class Book(Base):
     year_published = Column(Integer, nullable=True)
     isbn = Column(String, nullable=True, unique=True)
     in_stock = Column(Integer, default=1)
-
+    description = Column(String, nullable=True, default='Description here')
     __table_args__ = (
         CheckConstraint('in_stock >= 0', name='check_quantity_positive'),
     )

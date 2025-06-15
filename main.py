@@ -2,15 +2,17 @@ from fastapi import FastAPI, status, Response, Depends
 from fastapi.security import OAuth2PasswordBearer
 
 from schemas.book import BookSchema
+from schemas.borrowedbooks import BorrowedBooksSchema
 from schemas.reader import ReaderSchema
 from serializers.authentication.serializer import Librarian
 from serializers.books.serializer import Book, BookUpdate
 from serializers.readers.serializer import Reader, ReaderUpdate
 from packages.validators.validator import EmailValidator, PasswordValidator
 from packages.password_hashing.hasher import hash_password
+from serializers.books_logic.serializer import ReaderBookId
 import json
 from models.models import Librarian as LibrarianModel
-from models.manager import LibrarianManager, BookManager, ReaderManager
+from models.manager import LibrarianManager, BookManager, ReaderManager, BorrowedBooksManager
 from database import AsyncSession, engine
 from schemas.librarian import LibrarianSchema, LibrarianJWTSchema
 from tools.access_token import get_token
@@ -113,3 +115,28 @@ async def update_reader(id: int, updated_reader: ReaderUpdate, token: str = Depe
 async def delete_book(id: int, token: str = Depends(authenticate)):
     db = AsyncSession()
     await ReaderManager().delete(id, db)
+
+
+@app.post('/books/take', status_code=status.HTTP_200_OK, response_model=BorrowedBooksSchema)
+async def take_book(data: ReaderBookId, token: str = Depends(authenticate)):
+    data = data.model_dump()
+    book_id = data['book_id']
+    reader_id = data['reader_id']
+    db = AsyncSession()
+    book = await BookManager().get(book_id, db)
+    reader = await ReaderManager().get(reader_id, db)
+    borrowed_book = await BorrowedBooksManager().create(reader, book, db)
+    book.in_stock -= 1
+    await BookManager().update(book.id, db, in_stock=book.in_stock)
+
+    return borrowed_book
+
+@app.post('/books/return/{borrowed_id}', status_code=status.HTTP_200_OK)
+async def return_book(borrowed_id: int):
+    db = AsyncSession()
+    borrowed_book = await BorrowedBooksManager().return_book(borrowed_id, db)
+    return borrowed_book
+
+
+
+

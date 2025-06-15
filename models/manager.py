@@ -3,7 +3,7 @@ from typing import Type
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.models import Librarian, Book
+from models.models import Librarian, Book, Reader
 from sqlalchemy.orm import Session
 from psycopg2.errors import UniqueViolation
 from fastapi import HTTPException, status
@@ -84,7 +84,7 @@ class BookManager:
                                 detail='book not found')
 
 
-    async def update(self, id: int, database: AsyncSession, **kwargs):
+    async def update(self, id: int, database: AsyncSession, **kwargs) -> Book:
         async with database as session:
             stmt = select(Book).where(Book.id == id)
             result = await session.execute(stmt)
@@ -92,7 +92,8 @@ class BookManager:
 
             if book:
                 for key, value in kwargs.items():
-                    setattr(book, key, value)
+                    if value:
+                        setattr(book, key, value)
 
                 await session.commit()
                 await session.refresh(book)
@@ -102,7 +103,7 @@ class BookManager:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail='book not found')
 
-    async def delete(self, id: int, database: AsyncSession):
+    async def delete(self, id: int, database: AsyncSession) -> Book:
         async with database as session:
             stmt = select(Book).where(Book.id == id)
             result = await session.execute(stmt)
@@ -113,5 +114,68 @@ class BookManager:
                 return book
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail='book not found')
+
+
+class ReaderManager:
+
+    async def create(self, reader: dict, database: AsyncSession) -> Reader:
+        async with database as session:
+            reader = Reader(**reader)
+            session.add(reader)
+            try:
+
+                await session.commit()
+                await session.refresh(reader)
+
+            except IntegrityError as e:
+                await session.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="email already exists"
+                )
+            return reader
+
+    async def get(self, id: int, database: AsyncSession) -> Reader:
+        async with database as session:
+            stmt = select(Reader).where(Reader.id == id)
+            result = await session.execute(stmt)
+            reader = result.scalar_one_or_none()
+
+            if reader:
+                return reader
+
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail='user not found')
+
+    async def update(self, id: int, database: AsyncSession, **kwargs) -> Reader:
+        async with database as session:
+            stmt = select(Reader).where(Reader.id == id)
+            result = await session.execute(stmt)
+            reader = result.scalar_one_or_none()
+
+            if reader:
+                for key, value in kwargs.items():
+                    if value:
+                        setattr(reader, key, value)
+
+                await session.commit()
+                await session.refresh(reader)
+
+                return reader
+
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail='reader not found')
+
+    async def delete(self, id: int, database: AsyncSession) -> Reader:
+        async with database as session:
+            stmt = select(Reader).where(Reader.id == id)
+            result = await session.execute(stmt)
+            reader = result.scalar_one_or_none()
+            if reader:
+                await session.delete(reader)
+                await session.commit()
+                return reader
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail='reader not found')
 
 

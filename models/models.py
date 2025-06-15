@@ -12,7 +12,7 @@ class Book(Base):
     __tablename__ = 'books'
 
 
-    id = Column(Integer, unique=True, primary_key=True, index=True)
+    id = Column(Integer, unique=True, primary_key=True, index=True, autoincrement=True)
     name = Column(String(64), nullable=False)
     author = Column(String(64), nullable=False)
     year_published = Column(Integer, nullable=True)
@@ -22,3 +22,11 @@ class Book(Base):
     __table_args__ = (
         CheckConstraint('in_stock > 0', name='check_quantity_positive'),
     )
+
+
+class Reader(Base):
+    __tablename__ = 'readers'
+
+    id = Column(Integer, unique=True, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(32), nullable=False)
+    email = Column(String(64), unique=True)

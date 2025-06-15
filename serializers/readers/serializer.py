@@ -1,17 +1,13 @@
 from pydantic import BaseModel
 from typing import Optional
 
-class Book(BaseModel):
+class Reader(BaseModel):
     name: str
-    author: str
-    year_published: int
-    isbn: str
-    in_stock: int
+    email: str
 
-class BookUpdate(BaseModel):
+class ReaderUpdate(BaseModel):
     name: Optional[str] = None
     author: Optional[str] = None
     year_published: Optional[int] = None
     isbn: Optional[str] = None
     in_stock: Optional[int] = None
-

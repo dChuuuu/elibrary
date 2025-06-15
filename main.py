@@ -2,13 +2,15 @@ from fastapi import FastAPI, status, Response, Depends
 from fastapi.security import OAuth2PasswordBearer
 
 from schemas.book import BookSchema
+from schemas.reader import ReaderSchema
 from serializers.authentication.serializer import Librarian
 from serializers.books.serializer import Book, BookUpdate
+from serializers.readers.serializer import Reader, ReaderUpdate
 from packages.validators.validator import EmailValidator, PasswordValidator
 from packages.password_hashing.hasher import hash_password
 import json
 from models.models import Librarian as LibrarianModel
-from models.manager import LibrarianManager, BookManager
+from models.manager import LibrarianManager, BookManager, ReaderManager
 from database import AsyncSession, engine
 from schemas.librarian import LibrarianSchema, LibrarianJWTSchema
 from tools.access_token import get_token
@@ -46,10 +48,6 @@ async def login_librarian(librarian: Librarian):
 
     return response
 
-@app.post('/secured')
-async def secured_endpoint(token: str = Depends(authenticate)):
-    return {'message': 'successful'}
-
 @app.post('/books/add', status_code=status.HTTP_201_CREATED, response_model=BookSchema)
 async def create_book(book: Book, token: str = Depends(authenticate)):
     book = book.model_dump()
@@ -68,7 +66,13 @@ async def get_book(id: int, token: str = Depends(authenticate)):
 async def update_book(id: int, updated_book: BookUpdate, token: str = Depends(authenticate)):
     db = AsyncSession()
     updated_book = updated_book.model_dump()
+    try:
+        await EmailValidator().validate(updated_book['email'])
+    except KeyError:
+        pass
     book = await BookManager().update(id, db, **updated_book)
+
+
 
     return book
 
@@ -77,3 +81,35 @@ async def delete_book(id: int, token: str = Depends(authenticate)):
     db = AsyncSession()
     await BookManager().delete(id, db)
 
+@app.post('/readers/add', status_code=status.HTTP_201_CREATED, response_model=ReaderSchema)
+async def create_reader(reader: Reader, token: str = Depends(authenticate)):
+    reader = reader.model_dump()
+    await EmailValidator().validate(reader['email'])
+    db = AsyncSession()
+    reader = await ReaderManager().create(reader=reader, database=db)
+
+    return reader
+
+@app.get('/readers/{id}', status_code=status.HTTP_200_OK, response_model=ReaderSchema)
+async def get_book(id: int, token: str = Depends(authenticate)):
+    db = AsyncSession()
+    reader = await ReaderManager().get(id=id, database=db)
+
+    return reader
+
+@app.patch('/readers/{id}', status_code=status.HTTP_200_OK, response_model=ReaderSchema)
+async def update_reader(id: int, updated_reader: ReaderUpdate, token: str = Depends(authenticate)):
+    db = AsyncSession()
+    updated_reader = updated_reader.model_dump()
+    try:
+        await EmailValidator().validate(updated_reader['email'])
+    except KeyError:
+        pass
+    reader = await ReaderManager().update(id, db, **updated_reader)
+
+    return reader
+
+@app.delete('/readers/{id}', status_code=status.HTTP_204_NO_CONTENT)
+async def delete_book(id: int, token: str = Depends(authenticate)):
+    db = AsyncSession()
+    await ReaderManager().delete(id, db)

@@ -1,5 +1,3 @@
-from sqlalchemy.orm import Mapped
-
 from serializers.books.serializer import Book
 
 

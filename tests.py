@@ -1,4 +1,3 @@
-import pytest
 import pytest_asyncio
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -28,7 +27,7 @@ async def librarian():
 @pytest_asyncio.fixture
 async def librarian_login(client, librarian):
     data = librarian
-    response = await client.request(method='post', url='/librarians/register', json=data)
+    await client.request(method='post', url='/librarians/register', json=data)
     response = await client.request(method='post', url='/librarians/login', json=data)
     return response.json()
 

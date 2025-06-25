@@ -21,221 +21,217 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class LibrarianManager:
-    async def create(self, email: str, password: str, database: AsyncSession) -> Librarian:
-        async with database as session:
-            librarian = Librarian(email=email, password=password)
-            session.add(librarian)
-            try:
+    async def create(self, email: str, password: str, session: AsyncSession) -> Librarian:
+        librarian = Librarian(email=email, password=password)
+        session.add(librarian)
+        try:
 
-                await session.commit()
-                await session.refresh(librarian)
-            except IntegrityError as e:
-                await session.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="email already taken"
-                )
+            await session.commit()
+            await session.refresh(librarian)
+        except IntegrityError:
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="email already taken"
+            )
+
+        return librarian
+
+
+    async def get(self, email: str, password: str, session: AsyncSession) -> Librarian:
+
+        stmt = select(Librarian).where(Librarian.email == email)
+        result = await session.execute(stmt)
+        librarian = result.scalar_one_or_none()
+        if librarian:
+
+            is_password = pwd_context.verify(password, librarian.password)
+            if not is_password:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                    detail='wrong pasword')
 
             return librarian
 
-
-    async def get(self, email: str, password: str, database: AsyncSession) -> Librarian:
-
-        async with database as session:
-            stmt = select(Librarian).where(Librarian.email == email)
-            result = await session.execute(stmt)
-            librarian = result.scalar_one_or_none()
-            if librarian:
-
-                is_password = pwd_context.verify(password, librarian.password)
-                if not is_password:
-                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                        detail='wrong pasword')
-
-                return librarian
-
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail='user not found')
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='user not found')
 
 
 class BookManager:
 
-    async def create(self, book: dict, database: AsyncSession) -> Book:
-        async with database as session:
-            book = Book(**book)
-            session.add(book)
-            try:
+    async def create(self, book: dict, session: AsyncSession) -> Book:
 
-                await session.commit()
-                await session.refresh(book)
-            except IntegrityError as e:
-                await session.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="isbn already exists"
-                )
+        book = Book(**book)
+        session.add(book)
+        try:
+
+            await session.commit()
+            await session.refresh(book)
+        except IntegrityError as e:
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="isbn already exists"
+            )
+        return book
+
+
+    async def get(self, id: int, session: AsyncSession) -> Book:
+        stmt = select(Book).where(Book.id == id)
+        result = await session.execute(stmt)
+        book = result.scalar_one_or_none()
+
+        if book:
             return book
 
-
-    async def get(self, id: int, database: AsyncSession) -> Book:
-        async with database as session:
-            stmt = select(Book).where(Book.id == id)
-            result = await session.execute(stmt)
-            book = result.scalar_one_or_none()
-
-            if book:
-                return book
-
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail='book not found')
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='book not found')
 
 
-    async def update(self, id: int, database: AsyncSession, **kwargs) -> Book:
-        async with database as session:
-            stmt = select(Book).where(Book.id == id)
-            result = await session.execute(stmt)
-            book = result.scalar_one_or_none()
+    async def update(self, id: int, session: AsyncSession, **kwargs) -> Book:
 
-            if book:
-                for key, value in kwargs.items():
-                    if value is not None:
-                        setattr(book, key, value)
+        stmt = select(Book).where(Book.id == id)
+        result = await session.execute(stmt)
+        book = result.scalar_one_or_none()
 
-                await session.commit()
-                await session.refresh(book)
+        if book:
+            for key, value in kwargs.items():
+                if value is not None:
+                    setattr(book, key, value)
 
-                return book
+            await session.commit()
+            await session.refresh(book)
 
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail='book not found')
+            return book
 
-    async def delete(self, id: int, database: AsyncSession) -> Book:
-        async with database as session:
-            stmt = select(Book).where(Book.id == id)
-            result = await session.execute(stmt)
-            book = result.scalar_one_or_none()
-            if book:
-                await session.delete(book)
-                await session.commit()
-                return book
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail='book not found')
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='book not found')
+
+    async def delete(self, id: int, session: AsyncSession) -> Book:
+
+        stmt = select(Book).where(Book.id == id)
+        result = await session.execute(stmt)
+        book = result.scalar_one_or_none()
+        if book:
+            await session.delete(book)
+            await session.commit()
+            return book
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='book not found')
 
 
 class ReaderManager:
 
-    async def create(self, reader: dict, database: AsyncSession) -> Reader:
-        async with database as session:
-            reader = Reader(**reader)
-            session.add(reader)
-            try:
+    async def create(self, reader: dict, session: AsyncSession) -> Reader:
 
-                await session.commit()
-                await session.refresh(reader)
+        reader = Reader(**reader)
+        session.add(reader)
+        try:
 
-            except IntegrityError as e:
-                await session.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="email already exists"
-                )
+            await session.commit()
+            await session.refresh(reader)
+
+        except IntegrityError as e:
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="email already exists"
+            )
+        return reader
+
+    async def get(self, id: int, session: AsyncSession) -> Reader:
+
+        stmt = select(Reader).where(Reader.id == id)
+        result = await session.execute(stmt)
+        reader = result.scalar_one_or_none()
+
+        if reader:
             return reader
 
-    async def get(self, id: int, database: AsyncSession) -> Reader:
-        async with database as session:
-            stmt = select(Reader).where(Reader.id == id)
-            result = await session.execute(stmt)
-            reader = result.scalar_one_or_none()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='user not found')
 
-            if reader:
-                return reader
+    async def update(self, id: int, session: AsyncSession, **kwargs) -> Reader:
+        stmt = select(Reader).where(Reader.id == id)
+        result = await session.execute(stmt)
+        reader = result.scalar_one_or_none()
 
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail='user not found')
+        if reader:
+            for key, value in kwargs.items():
+                if value is not None:
+                    setattr(reader, key, value)
 
-    async def update(self, id: int, database: AsyncSession, **kwargs) -> Reader:
-        async with database as session:
-            stmt = select(Reader).where(Reader.id == id)
-            result = await session.execute(stmt)
-            reader = result.scalar_one_or_none()
+            await session.commit()
+            await session.refresh(reader)
 
-            if reader:
-                for key, value in kwargs.items():
-                    if value is not None:
-                        setattr(reader, key, value)
+            return reader
 
-                await session.commit()
-                await session.refresh(reader)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='reader not found')
 
-                return reader
+    async def delete(self, id: int, session: AsyncSession) -> Reader:
 
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail='reader not found')
-
-    async def delete(self, id: int, database: AsyncSession) -> Reader:
-        async with database as session:
-            stmt = select(Reader).where(Reader.id == id)
-            result = await session.execute(stmt)
-            reader = result.scalar_one_or_none()
-            if reader:
-                await session.delete(reader)
-                await session.commit()
-                return reader
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail='reader not found')
+        stmt = select(Reader).where(Reader.id == id)
+        result = await session.execute(stmt)
+        reader = result.scalar_one_or_none()
+        if reader:
+            await session.delete(reader)
+            await session.commit()
+            return reader
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='reader not found')
 
 
 class BorrowedBooksManager:
 
-    async def create(self, reader: ReaderSerializer, book: BookSerializer, database: AsyncSession) -> BorrowedBooks:
-        async with database as session:
-            book_id = book.id
+    async def create(self, reader: ReaderSerializer, book: BookSerializer, session: AsyncSession) -> BorrowedBooks:
 
-            reader_id = reader.id
-            stmt = select(BorrowedBooks).where(BorrowedBooks.reader_id == int(reader_id) and BorrowedBooks.return_date is not None)
+        book_id = book.id
 
+        reader_id = reader.id
+        stmt = select(BorrowedBooks).where(BorrowedBooks.reader_id == int(reader_id) and BorrowedBooks.return_date is not None)
+
+        result = await session.execute(stmt)
+        borrowed_books = result.scalars().all()
+        if len(borrowed_books) >= 3:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail='too many borrowed books')
+
+        if int(book.in_stock <= 0):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail='books not in stock')
+
+        borrowed_books = BorrowedBooks(reader_id=reader_id, book_id=book_id, borrow_date=date.today())
+
+        session.add(borrowed_books)
+
+        await session.commit()
+        await session.refresh(borrowed_books)
+
+        return borrowed_books
+
+    async def return_book(self, borrowed_id: int, session: AsyncSession):
+
+        stmt = select(BorrowedBooks).where(BorrowedBooks.id == borrowed_id)
+        result = await session.execute(stmt)
+        borrowed_book = result.scalar_one_or_none()
+
+        if borrowed_book:
+            if borrowed_book.return_date:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                    detail='book already returned')
+            stmt = select(Book).where(Book.id == int(borrowed_book.book_id))
             result = await session.execute(stmt)
-            borrowed_books = result.scalars().all()
-            if len(borrowed_books) >= 3:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                    detail='too many borrowed books')
-
-            if int(book.in_stock <= 0):
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                    detail='books not in stock')
-
-            borrowed_books = BorrowedBooks(reader_id=reader_id, book_id=book_id, borrow_date=date.today())
-
-            session.add(borrowed_books)
-
+            book = result.scalar_one_or_none()
+            book.in_stock += 1
             await session.commit()
-            await session.refresh(borrowed_books)
-
-            return borrowed_books
-
-    async def return_book(self, borrowed_id: int, database: AsyncSession):
-        async with database as session:
-            stmt = select(BorrowedBooks).where(BorrowedBooks.id == borrowed_id)
-            result = await session.execute(stmt)
-            borrowed_book = result.scalar_one_or_none()
-
-            if borrowed_book:
-                if borrowed_book.return_date:
-                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                        detail='book already returned')
-                stmt = select(Book).where(Book.id == int(borrowed_book.book_id))
-                result = await session.execute(stmt)
-                book = result.scalar_one_or_none()
-                book.in_stock += 1
-                await session.commit()
-                await session.refresh(book)
-                borrowed_book.return_date = date.today()
-                await session.commit()
-                await session.refresh(borrowed_book)
+            await session.refresh(book)
+            borrowed_book.return_date = date.today()
+            await session.commit()
+            await session.refresh(borrowed_book)
 
 
-                return borrowed_book
+            return borrowed_book
 
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail='borrowed book not found')
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='borrowed book not found')
 
